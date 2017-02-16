@@ -82,11 +82,7 @@ func main() {
 func connect(g *[SIZE]string, regions *[SIZE]int, r *rand.Rand) {
 	edges := findConnectors(g, regions)
 	spanningTree := NewIntSet()
-	randomIndex := r.Intn(len(edges))
-	edge := edges[randomIndex]
-	g[position1d(edge.x, edge.y)] = EMPTY
-	spanningTree.add(edge.region1)
-	spanningTree.add(edge.region2)
+	open(g, &edges[r.Intn(len(edges))], spanningTree)
 	edges = filter(edges, func(v connector) bool {
 		return !(spanningTree.contains(v.region1) && spanningTree.contains(v.region2))
 	})
@@ -94,15 +90,17 @@ func connect(g *[SIZE]string, regions *[SIZE]int, r *rand.Rand) {
 		unitedEdges := filter(edges, func(v connector) bool {
 			return spanningTree.contains(v.region1) || spanningTree.contains(v.region2)
 		})
-		randomIndex := r.Intn(len(unitedEdges))
-		edge := unitedEdges[randomIndex]
-		g[position1d(edge.x, edge.y)] = EMPTY
-		spanningTree.add(edge.region1)
-		spanningTree.add(edge.region2)
+		open(g, &unitedEdges[r.Intn(len(unitedEdges))], spanningTree)
 		edges = filter(edges, func(v connector) bool {
 			return !(spanningTree.contains(v.region1) && spanningTree.contains(v.region2))
 		})
 	}
+}
+
+func open(g *[SIZE]string, edge *connector, spanningTree *IntSet) {
+	g[position1d(edge.x, edge.y)] = EMPTY
+	spanningTree.add(edge.region1)
+	spanningTree.add(edge.region2)
 }
 
 func findConnectors(g *[SIZE]string, regions *[SIZE]int) [] connector {
