@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-const XSIZE = 50
+const XSIZE = 70
 const YSIZE = 50
 const SIZE = YSIZE * XSIZE
 const WALL = "#"
@@ -15,8 +15,8 @@ const EXIT = "E"
 const MONSTER = "M"
 const TREASURE = "*"
 const EMPTY = " "
-const ROOM_GEN_ITERATIONS = 800
-const MAX_ROOM_SIZE = 11
+const ROOM_GEN_ITERATIONS = 400
+const MAX_ROOM_SIZE = 12
 const MIN_ROOM_SIZE = 4
 const LEFT = 0
 const UP = 1
@@ -42,15 +42,23 @@ func main() {
 	const MONSTER_RATIO = 0.02
 	const TREASURE_RATIO = 0.02
 	var grid [SIZE] string
+	var regions [SIZE] int
 	for i := 0; i < SIZE; i++ {
 		grid[i] = WALL
 	}
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	generateRooms(&grid, r)
-	fillWithMazes(&grid, r)
+	var currentRegionId = 1
+	currentRegionId = generateRooms(&grid, &regions, r, currentRegionId)
+	currentRegionId = fillWithMazes(&grid, &regions, r, currentRegionId)
 
-
+	for y := 0; y < YSIZE; y++ {
+		for x := 0; x < XSIZE; x++ {
+			// om det finns en färgad i l,r,u,d applicera färg
+			// om det inte finns färgad, ta en ny färg
+			// 2 pass - om det är en vägg kolla l,r,u,d om det
+		}
+	}
 	//retryingRandomAdd(&grid, START, r)
 	//retryingRandomAdd(&grid, EXIT, r)
 	/*for i := 0; i < WALL_RATIO * SIZE; i++ {
@@ -63,9 +71,10 @@ func main() {
 		retryingRandomAdd(&grid, TREASURE, r)
 	}*/
 	print(&grid)
+	printInt(&regions)
 }
 
-func generateRooms(g *[SIZE]string, r *rand.Rand) {
+func generateRooms(g *[SIZE]string, regions *[SIZE]int, r *rand.Rand, currentRegionId int) int {
 	for i := 0; i < ROOM_GEN_ITERATIONS; i++ {
 		var x = r.Intn(XSIZE)
 		var y = r.Intn(YSIZE)
@@ -76,41 +85,49 @@ func generateRooms(g *[SIZE]string, r *rand.Rand) {
 			for y := random.y + 1; y < random.y + random.height - 1 && y < YSIZE; y++ {
 				for x := random.x + 1; x < random.x + random.width - 1 && x < XSIZE; x++ {
 					g[position1d(x, y)] = EMPTY
+					regions[position1d(x, y)] = currentRegionId
 				}
 			}
+			currentRegionId = currentRegionId + 1
 		}
 	}
+	return currentRegionId
 }
 
 // Depth-first search https://en.wikipedia.org/wiki/Maze_generation_algorithm
-func fillWithMazes(g *[SIZE]string, r *rand.Rand) {
+func fillWithMazes(g *[SIZE]string, regions *[SIZE]int, r *rand.Rand, currentRegionId int) int {
 	for y := 1; y < YSIZE - 1; y++ {
 		for x := 1; x < XSIZE - 1; x++ {
-			generateMaze(g, r, x, y, NO_DIR)
+			if generateMaze(g, regions, r, x, y, NO_DIR, currentRegionId) {
+				currentRegionId = currentRegionId + 1
+			}
 		}
 	}
+	return currentRegionId
 }
 
-func generateMaze(g *[SIZE]string, r *rand.Rand, x int, y int, dir int) {
+func generateMaze(g *[SIZE]string, regions *[SIZE]int, r *rand.Rand, x int, y int, dir int, currentRegionId int) bool {
 	if x < 1 || x >= XSIZE - 1 || y < 1 || y >= YSIZE - 1 || !possibleDirection(g, x, y, dir) {
-		return
+		return false
 	}
 	position := position1d(x, y)
 	g[position] = EMPTY
+	regions[position] = currentRegionId
 	var unvisited = toUnvisitedDirections(dir)
 	for len(unvisited) > 0 {
 		var i = r.Intn(len(unvisited))
 		if unvisited[i] == LEFT {
-			generateMaze(g, r, x - 1, y, LEFT)
+			generateMaze(g, regions, r, x - 1, y, LEFT, currentRegionId)
 		} else if unvisited[i] == UP {
-			generateMaze(g, r, x, y - 1, UP)
+			generateMaze(g, regions, r, x, y - 1, UP, currentRegionId)
 		} else if unvisited[i] == RIGHT {
-			generateMaze(g, r, x + 1, y, RIGHT)
+			generateMaze(g, regions, r, x + 1, y, RIGHT, currentRegionId)
 		} else if unvisited[i] == DOWN {
-			generateMaze(g, r, x, y + 1, DOWN)
+			generateMaze(g, regions, r, x, y + 1, DOWN, currentRegionId)
 		}
 		unvisited = remove(unvisited, i)
 	}
+	return true
 }
 
 func toUnvisitedDirections(dir int) []int {
@@ -196,6 +213,15 @@ func print(g *[SIZE]string) {
 	for y := 0; y < YSIZE; y++ {
 		for x := 0; x < XSIZE; x++ {
 			fmt.Printf(g[position1d(x, y)] + " ")
+		}
+		fmt.Printf("\n")
+	}
+}
+
+func printInt(g *[SIZE]int) {
+	for y := 0; y < YSIZE; y++ {
+		for x := 0; x < XSIZE; x++ {
+			fmt.Printf("%d ", g[position1d(x, y)])
 		}
 		fmt.Printf("\n")
 	}
