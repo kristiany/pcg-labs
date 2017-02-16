@@ -36,6 +36,14 @@ type pos struct {
 	y int
 }
 
+type connector struct {
+	x int
+	y int
+	region1 int
+	region2 int
+	horizontal bool
+}
+
 // Inspired by http://journal.stuffwithstuff.com/2014/12/21/rooms-and-mazes/
 func main() {
 	const WALL_RATIO = 0.36
@@ -52,13 +60,8 @@ func main() {
 	currentRegionId = generateRooms(&grid, &regions, r, currentRegionId)
 	currentRegionId = fillWithMazes(&grid, &regions, r, currentRegionId)
 
-	for y := 0; y < YSIZE; y++ {
-		for x := 0; x < XSIZE; x++ {
-			// om det finns en färgad i l,r,u,d applicera färg
-			// om det inte finns färgad, ta en ny färg
-			// 2 pass - om det är en vägg kolla l,r,u,d om det
-		}
-	}
+	connect(&grid, &regions, r)
+
 	//retryingRandomAdd(&grid, START, r)
 	//retryingRandomAdd(&grid, EXIT, r)
 	/*for i := 0; i < WALL_RATIO * SIZE; i++ {
@@ -70,8 +73,71 @@ func main() {
 	for i := 0; i < TREASURE_RATIO * SIZE; i++ {
 		retryingRandomAdd(&grid, TREASURE, r)
 	}*/
+	fmt.Println("Tiles:")
 	print(&grid)
-	printInt(&regions)
+	//fmt.Println("Regions:")
+	//printInt(&regions)
+}
+
+func connect(g *[SIZE]string, regions *[SIZE]int, r *rand.Rand) {
+	edges := findConnectors(g, regions)
+	spanningTree := NewIntSet()
+	randomIndex := r.Intn(len(edges))
+	edge := edges[randomIndex]
+	g[position1d(edge.x, edge.y)] = EMPTY
+	spanningTree.add(edge.region1)
+	spanningTree.add(edge.region2)
+	edges = filter(edges, func(v connector) bool {
+		return !(spanningTree.contains(v.region1) && spanningTree.contains(v.region2))
+	})
+	for len(edges) > 0 {
+		unitedEdges := filter(edges, func(v connector) bool {
+			return spanningTree.contains(v.region1) || spanningTree.contains(v.region2)
+		})
+		randomIndex := r.Intn(len(unitedEdges))
+		edge := unitedEdges[randomIndex]
+		g[position1d(edge.x, edge.y)] = EMPTY
+		spanningTree.add(edge.region1)
+		spanningTree.add(edge.region2)
+		edges = filter(edges, func(v connector) bool {
+			return !(spanningTree.contains(v.region1) && spanningTree.contains(v.region2))
+		})
+	}
+}
+
+func findConnectors(g *[SIZE]string, regions *[SIZE]int) [] connector {
+	var edges [SIZE] connector
+	edgesIndex := 0
+	for y := 0; y < YSIZE; y++ {
+		for x := 0; x < XSIZE; x++ {
+			edge := connectable(g, regions, x, y)
+			if edge != nil {
+				edges[edgesIndex] = *edge
+				edgesIndex = edgesIndex + 1
+			}
+		}
+	}
+	return edges[:edgesIndex]
+}
+
+func connectable(g *[SIZE]string, regions *[SIZE]int, x int, y int) *connector {
+	if x < 1 || x >= XSIZE - 1 || y < 1 || y >= YSIZE - 1 {
+		return nil
+	}
+	left := position1d(x - 1, y)
+	right := position1d(x + 1, y)
+	up := position1d(x, y - 1)
+	down := position1d(x, y + 1)
+	if g[position1d(x, y)] != WALL {
+		return nil
+	}
+	if regions[left] != 0 && regions[right] != 0 && regions[left] != regions[right] {
+		return &connector{x, y, regions[left], regions[right], true}
+	}
+	if regions[up] != 0 && regions[down] != 0 && regions[up] != regions[down] {
+		return &connector{x, y, regions[up], regions[down], false}
+	}
+	return nil
 }
 
 func generateRooms(g *[SIZE]string, regions *[SIZE]int, r *rand.Rand, currentRegionId int) int {
@@ -254,4 +320,35 @@ func min(x, y int) int {
 		return x
 	}
 	return y
+}
+
+func filter(vs []connector, f func(connector) bool) []connector {
+	result := make([]connector, 0)
+	for _, v := range vs {
+		if f(v) {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+// Oh this fudging language, you have to do everything yourself
+// https://play.golang.org/p/tDdutH672-
+type IntSet struct {
+	set map[int]bool
+}
+
+func NewIntSet() *IntSet {
+	return &IntSet{make(map[int]bool)}
+}
+
+func (set *IntSet) add(i int) bool {
+	_, found := set.set[i]
+	set.set[i] = true
+	return !found	//False if it existed already
+}
+
+func (set *IntSet) contains(i int) bool {
+	_, found := set.set[i]
+	return found	//true if it existed already
 }
