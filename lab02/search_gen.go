@@ -16,6 +16,7 @@ const MONSTER = "M"
 const TREASURE = "*"
 const EMPTY = " "
 const ROOM_GEN_ITERATIONS = 400
+const EXTRA_DOORS_RATE = 0.02
 const MAX_ROOM_SIZE = 12
 const MIN_ROOM_SIZE = 4
 const LEFT = 0
@@ -83,18 +84,20 @@ func connect(g *[SIZE]string, regions *[SIZE]int, r *rand.Rand) {
 	edges := findConnectors(g, regions)
 	spanningTree := NewIntSet()
 	open(g, &edges[r.Intn(len(edges))], spanningTree)
-	edges = filter(edges, func(v connector) bool {
-		return !(spanningTree.contains(v.region1) && spanningTree.contains(v.region2))
-	})
+	edges = validConnectors(edges, spanningTree)
 	for len(edges) > 0 {
 		unitedEdges := filter(edges, func(v connector) bool {
 			return spanningTree.contains(v.region1) || spanningTree.contains(v.region2)
 		})
 		open(g, &unitedEdges[r.Intn(len(unitedEdges))], spanningTree)
-		edges = filter(edges, func(v connector) bool {
-			return !(spanningTree.contains(v.region1) && spanningTree.contains(v.region2))
-		})
+		edges = validConnectors(edges, spanningTree)
 	}
+}
+
+func validConnectors(edges []connector, spanningTree *IntSet) []connector {
+	return filter(edges, func(v connector) bool {
+		return !(spanningTree.contains(v.region1) && spanningTree.contains(v.region2))
+	})
 }
 
 func open(g *[SIZE]string, edge *connector, spanningTree *IntSet) {
