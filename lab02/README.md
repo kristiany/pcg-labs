@@ -35,3 +35,7 @@ space but it has no locality.
 Content quality can be measured directly by counting the number of unreachable
 rooms or undesired properties such as a corridor connected to a corner in a room or
 a room connected to too many corridors.
+
+
+#### dungeon_gen.go
+Not really a search and evaluate lab, but got so inspired by Bob Nystrom's post http://journal.stuffwithstuff.com/2014/12/21/rooms-and-mazes/ I couldn't resist to try it. 
