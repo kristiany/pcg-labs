@@ -63,6 +63,7 @@ func main() {
 
 	connect(&grid, &regions, r)
 
+	sparsify(&grid)
 	//retryingRandomAdd(&grid, START, r)
 	//retryingRandomAdd(&grid, EXIT, r)
 	/*for i := 0; i < WALL_RATIO * SIZE; i++ {
@@ -78,6 +79,63 @@ func main() {
 	print(&grid)
 	//fmt.Println("Regions:")
 	//printInt(&regions)
+}
+func sparsify(g *[SIZE]string) {
+	for y := 1; y < YSIZE - 1; y++ {
+		for x := 1; x < XSIZE - 1; x++ {
+			removeDeadend(g, x, y)
+		}
+	}
+}
+
+func removeDeadend(g *[SIZE]string, x int, y int) {
+	if g[position1d(x, y)] != EMPTY || x < 1 || x >= XSIZE - 1 || y < 1 || y >= YSIZE - 1 {
+		return
+	}
+	closeableDirection := closeable(g, x, y)
+	if closeableDirection == NO_DIR {
+		return
+	}
+	g[position1d(x, y)] = WALL
+	if closeableDirection == LEFT {
+		removeDeadend(g, x - 1, y)
+	}
+	if closeableDirection == RIGHT {
+		removeDeadend(g, x + 1, y)
+	}
+	if closeableDirection == UP {
+		removeDeadend(g, x, y - 1)
+	}
+	if closeableDirection == DOWN {
+		removeDeadend(g, x, y + 1)
+	}
+}
+func closeable(g *[SIZE]string, x int, y int) int {
+	if g[position1d(x - 1, y)] == EMPTY &&
+			g[position1d(x, y - 1)] == WALL &&
+			g[position1d(x + 1, y)] == WALL &&
+			g[position1d(x, y + 1)] == WALL {
+		return LEFT
+	}
+	if g[position1d(x + 1, y)] == EMPTY &&
+			g[position1d(x, y - 1)] == WALL &&
+			g[position1d(x - 1, y)] == WALL &&
+			g[position1d(x, y + 1)] == WALL {
+		return RIGHT
+	}
+	if g[position1d(x, y - 1)] == EMPTY &&
+			g[position1d(x + 1, y)] == WALL &&
+			g[position1d(x, y + 1)] == WALL &&
+			g[position1d(x - 1, y)] == WALL {
+		return UP
+	}
+	if g[position1d(x, y + 1)] == EMPTY &&
+			g[position1d(x + 1, y)] == WALL &&
+			g[position1d(x, y - 1)] == WALL &&
+			g[position1d(x - 1, y)] == WALL {
+		return DOWN
+	}
+	return NO_DIR
 }
 
 func connect(g *[SIZE]string, regions *[SIZE]int, r *rand.Rand) {
