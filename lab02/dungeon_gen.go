@@ -47,7 +47,6 @@ type connector struct {
 
 // Inspired by http://journal.stuffwithstuff.com/2014/12/21/rooms-and-mazes/
 func main() {
-	const WALL_RATIO = 0.36
 	const MONSTER_RATIO = 0.02
 	const TREASURE_RATIO = 0.02
 	var grid [SIZE] string
@@ -56,19 +55,14 @@ func main() {
 		grid[i] = WALL
 	}
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
 	var currentRegionId = 1
-	currentRegionId = generateRooms(&grid, &regions, r, currentRegionId)
+	var rooms [] room
+	currentRegionId, rooms = generateRooms(&grid, &regions, r, currentRegionId)
 	currentRegionId = fillWithMazes(&grid, &regions, r, currentRegionId)
-
 	connect(&grid, &regions, r)
-
 	sparsify(&grid)
-	//retryingRandomAdd(&grid, START, r)
-	//retryingRandomAdd(&grid, EXIT, r)
-	/*for i := 0; i < WALL_RATIO * SIZE; i++ {
-		retryingRandomAdd(&grid, WALL, r)
-	}*/
+	retryingRandomAdd(&grid, rooms, START, r)
+	retryingRandomAdd(&grid, rooms, EXIT, r)
 	/*for i := 0; i < MONSTER_RATIO * SIZE; i++ {
 		retryingRandomAdd(&grid, MONSTER, r)
 	}
@@ -77,8 +71,6 @@ func main() {
 	}*/
 	fmt.Println("Tiles:")
 	print(&grid)
-	//fmt.Println("Regions:")
-	//printInt(&regions)
 }
 func sparsify(g *[SIZE]string) {
 	for y := 1; y < YSIZE - 1; y++ {
@@ -208,16 +200,18 @@ func connectable(g *[SIZE]string, regions *[SIZE]int, x int, y int) *connector {
 	return nil
 }
 
-func generateRooms(g *[SIZE]string, regions *[SIZE]int, r *rand.Rand, currentRegionId int) int {
+func generateRooms(g *[SIZE]string, regions *[SIZE]int, r *rand.Rand, currentRegionId int) (int, []room) {
+	rooms := make([]room, 0)
 	for i := 0; i < ROOM_GEN_ITERATIONS; i++ {
-		var x = r.Intn(XSIZE)
-		var y = r.Intn(YSIZE)
+		var x = r.Intn(XSIZE - MIN_ROOM_SIZE)
+		var y = r.Intn(YSIZE - MIN_ROOM_SIZE)
 		var width = r.Intn(MAX_ROOM_SIZE - MIN_ROOM_SIZE + 1) + MIN_ROOM_SIZE
 		var height = r.Intn(MAX_ROOM_SIZE - MIN_ROOM_SIZE + 1) + MIN_ROOM_SIZE
-		var random = room{x, y, min(width, XSIZE - x), min(height, YSIZE - y)}
+		var random = room{x, y, min(width, XSIZE - x - 1), min(height, YSIZE - y - 1)}
 		if(areaFree(g, random)) {
-			for y := random.y + 1; y < random.y + random.height - 1 && y < YSIZE; y++ {
-				for x := random.x + 1; x < random.x + random.width - 1 && x < XSIZE; x++ {
+			rooms = append(rooms, random)
+			for y := random.y + 1; y < random.y + random.height && y < YSIZE; y++ {
+				for x := random.x + 1; x < random.x + random.width && x < XSIZE; x++ {
 					g[position1d(x, y)] = EMPTY
 					regions[position1d(x, y)] = currentRegionId
 				}
@@ -225,7 +219,7 @@ func generateRooms(g *[SIZE]string, regions *[SIZE]int, r *rand.Rand, currentReg
 			currentRegionId = currentRegionId + 1
 		}
 	}
-	return currentRegionId
+	return currentRegionId, rooms
 }
 
 // Depth-first search https://en.wikipedia.org/wiki/Maze_generation_algorithm
@@ -333,8 +327,8 @@ func possibleDirection(g *[SIZE]string, x int, y int, dir int) bool {
 }
 
 func areaFree(g *[SIZE]string, room room) bool {
-	for y := room.y; y < room.y + room.height && y < YSIZE; y++ {
-		for x := room.x; x < room.x + room.width && x < XSIZE; x++ {
+	for y := room.y; y <= room.y + room.height && y < YSIZE; y++ {
+		for x := room.x; x <= room.x + room.width && x < XSIZE; x++ {
 			if(g[position1d(x, y)] != WALL) {
 				return false;
 			}
@@ -361,8 +355,8 @@ func printInt(g *[SIZE]int) {
 	}
 }
 
-func retryingRandomAdd(g *[SIZE]string, value string, r *rand.Rand) {
-	for i := 0; !addSafe(g, randomPosition(r), value) && i < 200; i++ {
+func retryingRandomAdd(g *[SIZE]string, rooms [] room, value string, r *rand.Rand) {
+	for i := 0; !addSafe(g, randomRoomPosition(r, rooms[r.Intn(len(rooms))]), value) && i < 100; i++ {
 		//fmt.Println("Index taking, trying another")
 	}
 }
@@ -370,13 +364,17 @@ func retryingRandomAdd(g *[SIZE]string, value string, r *rand.Rand) {
 func addSafe(g *[SIZE]string, i int, value string) bool {
 	if(g[i] == EMPTY) {
 		g[i] = value
+		fmt.Printf("Placing %s at %d\n", value, i)
 		return true
 	}
 	return false
 }
 
-func randomPosition(r *rand.Rand) int {
-	return position1d(r.Intn(XSIZE), r.Intn(YSIZE))
+func randomRoomPosition(r *rand.Rand, room room) int {
+	roomx := r.Intn(room.width) + 1
+	roomy := r.Intn(room.height) + 1
+	fmt.Printf("Trying random room position (%d, %d) at position (%d, %d)\n", roomx, roomy, room.x, room.y)
+	return position1d(room.x + roomx, room.y + roomy)
 }
 
 func position1d(x int, y int) int {
