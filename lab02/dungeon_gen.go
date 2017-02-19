@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
+	"github.com/kristiany/pcg-labs/lab02/utils"
 )
 
 const XSIZE = 70
@@ -132,13 +133,13 @@ func closeable(g *[SIZE]string, x int, y int) int {
 
 func connect(g *[SIZE]string, regions *[SIZE]int, r *rand.Rand) {
 	edges := findConnectors(g, regions)
-	spanningTree := NewIntSet()
+	spanningTree := utils.NewIntSet()
 	open(g, &edges[r.Intn(len(edges))], spanningTree)
 	doors := 1
 	edges = validConnectors(edges, spanningTree)
 	for len(edges) > 0 {
 		unitedEdges := filter(edges, func(v connector) bool {
-			return spanningTree.contains(v.region1) || spanningTree.contains(v.region2)
+			return spanningTree.Contains(v.region1) || spanningTree.Contains(v.region2)
 		})
 		open(g, &unitedEdges[r.Intn(len(unitedEdges))], spanningTree)
 		doors = doors + 1
@@ -146,23 +147,23 @@ func connect(g *[SIZE]string, regions *[SIZE]int, r *rand.Rand) {
 	}
 	// Extra doors
 	edges = findConnectors(g, regions)
-	spanningTree = NewIntSet()
+	spanningTree = utils.NewIntSet()
 	max := int(1.0 / EXTRA_DOORS_ONE_IN * float64(doors))
 	for i := 0; i < max; i++ {
 		open(g, &edges[r.Intn(len(edges))], spanningTree)
 	}
 }
 
-func validConnectors(edges []connector, spanningTree *IntSet) []connector {
+func validConnectors(edges []connector, spanningTree *utils.IntSet) []connector {
 	return filter(edges, func(v connector) bool {
-		return !(spanningTree.contains(v.region1) && spanningTree.contains(v.region2))
+		return !(spanningTree.Contains(v.region1) && spanningTree.Contains(v.region2))
 	})
 }
 
-func open(g *[SIZE]string, edge *connector, spanningTree *IntSet) {
+func open(g *[SIZE]string, edge *connector, spanningTree *utils.IntSet) {
 	g[position1d(edge.x, edge.y)] = EMPTY
-	spanningTree.add(edge.region1)
-	spanningTree.add(edge.region2)
+	spanningTree.Add(edge.region1)
+	spanningTree.Add(edge.region2)
 }
 
 func findConnectors(g *[SIZE]string, regions *[SIZE]int) [] connector {
@@ -207,7 +208,7 @@ func generateRooms(g *[SIZE]string, regions *[SIZE]int, r *rand.Rand, currentReg
 		var y = r.Intn(YSIZE - MIN_ROOM_SIZE)
 		var width = r.Intn(MAX_ROOM_SIZE - MIN_ROOM_SIZE + 1) + MIN_ROOM_SIZE
 		var height = r.Intn(MAX_ROOM_SIZE - MIN_ROOM_SIZE + 1) + MIN_ROOM_SIZE
-		var random = room{x, y, min(width, XSIZE - x - 1), min(height, YSIZE - y - 1)}
+		var random = room{x, y, utils.Min(width, XSIZE - x - 1), utils.Min(height, YSIZE - y - 1)}
 		if(areaFree(g, random)) {
 			rooms = append(rooms, random)
 			for y := random.y + 1; y < random.y + random.height && y < YSIZE; y++ {
@@ -381,13 +382,6 @@ func position1d(x int, y int) int {
 	return y * XSIZE + x
 }
 
-func min(x, y int) int {
-	if x < y {
-		return x
-	}
-	return y
-}
-
 func filter(vs []connector, f func(connector) bool) []connector {
 	result := make([]connector, 0)
 	for _, v := range vs {
@@ -396,25 +390,4 @@ func filter(vs []connector, f func(connector) bool) []connector {
 		}
 	}
 	return result
-}
-
-// Oh this fudging language, you have to do everything yourself
-// https://play.golang.org/p/tDdutH672-
-type IntSet struct {
-	set map[int]bool
-}
-
-func NewIntSet() *IntSet {
-	return &IntSet{make(map[int]bool)}
-}
-
-func (set *IntSet) add(i int) bool {
-	_, found := set.set[i]
-	set.set[i] = true
-	return !found	//False if it existed already
-}
-
-func (set *IntSet) contains(i int) bool {
-	_, found := set.set[i]
-	return found	//true if it existed already
 }
