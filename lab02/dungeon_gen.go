@@ -48,7 +48,7 @@ type connector struct {
 // Inspired by http://journal.stuffwithstuff.com/2014/12/21/rooms-and-mazes/
 func main() {
 	const MONSTER_RATIO = 0.02
-	const TREASURE_RATIO = 0.02
+	const TREASURE_RATIO = 0.03
 	var grid [SIZE] string
 	var regions [SIZE] int
 	for i := 0; i < SIZE; i++ {
@@ -63,12 +63,12 @@ func main() {
 	sparsify(&grid)
 	retryingRandomAdd(&grid, rooms, START, r)
 	retryingRandomAdd(&grid, rooms, EXIT, r)
-	/*for i := 0; i < MONSTER_RATIO * SIZE; i++ {
-		retryingRandomAdd(&grid, MONSTER, r)
+	for i := 0; i < MONSTER_RATIO * SIZE; i++ {
+		retryingRandomAdd(&grid, rooms, MONSTER, r)
 	}
 	for i := 0; i < TREASURE_RATIO * SIZE; i++ {
-		retryingRandomAdd(&grid, TREASURE, r)
-	}*/
+		retryingRandomAdd(&grid, rooms, TREASURE, r)
+	}
 	fmt.Println("Tiles:")
 	print(&grid)
 }
