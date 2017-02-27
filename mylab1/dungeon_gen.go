@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
-	"github.com/kristiany/pcg-labs/lab02/utils"
+	"github.com/kristiany/pcg-labs/utils"
 )
 
 const XSIZE = 70
